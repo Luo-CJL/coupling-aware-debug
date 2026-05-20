@@ -8,6 +8,7 @@ description: >-
   with other modes in the same UI. Use when a fix might create regression in coupled modes.
   Use "深度debug" / "复杂bug" / "跨模块debug" / "团队debug" to trigger deep mode (Agent Team).
 version: 1.3
+platform: agnostic
 ---
 
 # Coupling-Aware Debug (耦合感知调试)
@@ -16,6 +17,18 @@ Debug workflow that prevents regression in coupled features. Before proposing an
 map the coupling surface and verify impact across all dependent modes.
 
 **Violating the letter of this workflow is violating the spirit of this workflow.**
+
+## Platform Compatibility
+
+This skill is platform-agnostic. Tool references use generic terms; adapt to your platform:
+
+| Concept | CodeBuddy | Claude Code | Cursor | Other |
+|---------|-----------|-------------|--------|-------|
+| Parallel sub-agents | `Task(code-explorer)` | `Task` subagent | Agent mode | Your platform's agent dispatch |
+| Team creation | `team_create` | Not available → skip Deep Mode | Not available → skip Deep Mode | Platform-specific |
+| Inter-agent messaging | `send_message` | Not available → skip Step 3 | Not available → skip Step 3 | Platform-specific |
+
+**If your platform lacks team creation, use Standard Mode only.**
 
 ## Mode Selection (Read FIRST)
 
@@ -32,7 +45,7 @@ Before starting any workflow, check what the user said:
 
 ## Standard Workflow (Subagent Parallel Analysis)
 
-Default mode for most bugs. Use code-explorer subagents launched in parallel.
+Default mode for most bugs. Use parallel sub-agents to read and analyze code simultaneously.
 
 ### When to Use
 
@@ -49,18 +62,18 @@ multiple modes/features that share containers, state, or event routing.
 
 > **"What other features/modes share the infrastructure that this feature depends on?"**
 
-Common shared layers: container `div`, overlay wrapper, Fabric canvas, global state,
+Common shared layers: container `div`, overlay wrapper, canvas, global state,
 event routing (`pointer-events`), z-index stacking, conditional rendering gate.
 
 ### Step 2: Coupling Analysis (Parallel) — MANDATORY, DO NOT SKIP
 
-**Launch parallel subagents** (Task tool, `subagent_name="code-explorer"`) to inspect
+**Launch parallel sub-agents** (use your platform's agent dispatch tool) to inspect
 EVERY module that shares the broken feature's infrastructure. One per module, all launched
 simultaneously. Wait for ALL to complete before forming a conclusion.
 
 **This step is NOT optional.** Proposing a fix without completing Step 2 is a violation.
 
-Each subagent must answer:
+Each sub-agent must answer:
 1. Does this module render in the shared container?
 2. What `pointer-events` / z-index / event handlers does it set?
 3. In its passive state (e.g., `readOnly=true`, hidden, inactive), does it block events?
@@ -69,16 +82,16 @@ Each subagent must answer:
 Example for a PDF editor with 8 modes:
 
 ```
-Parallel subagents (launched simultaneously):
-├── subagent A → WatermarkLayer (passive mode behavior)
-├── subagent B → SignatureLayer (passive mode behavior)
-├── subagent C → RedactionLayer (passive mode behavior)
-└── subagent D → ImageLayer (passive mode behavior)
+Parallel sub-agents (launched simultaneously):
+├── agent A → WatermarkLayer (passive mode behavior)
+├── agent B → SignatureLayer (passive mode behavior)
+├── agent C → RedactionLayer (passive mode behavior)
+└── agent D → ImageLayer (passive mode behavior)
 ```
 
 ### Step 3: Impact Assessment
 
-Aggregate subagent reports into a coupling matrix before proposing any fix:
+Aggregate sub-agent reports into a coupling matrix before proposing any fix:
 
 | Mode | Shares What | Affected? | Mitigation |
 |------|-------------|:---:|------------|
@@ -168,7 +181,7 @@ Stop. Run Step 2. Then propose.**
 ## Key Principles
 
 1. **Coupling check before root cause** — Always ask "what shares this?" before "what broke this?"
-2. **Parallel analysis is mandatory** — Launch all coupling-inspection subagents in one batch.
+2. **Parallel analysis is mandatory** — Launch all coupling-inspection sub-agents in one batch.
 3. **Zero regression is the bar** — A fix that breaks another mode is not a fix.
 4. **Passive state is still present** — readOnly components are in the DOM and can interfere.
 
@@ -180,11 +193,13 @@ For detailed coupling patterns and checklists, see `references/coupling-patterns
 
 Triggered when user says: `深度debug`, `深度调试`, `复杂bug`, `跨模块debug`, `多系统bug`, `团队debug`.
 
+**⚠️ Requires platform support for agent teams/inter-agent messaging. If unavailable, fall back to Standard Mode.**
+
 Use this mode when the bug:
 - Spans multiple independent modules (e.g., frontend + backend + database)
 - Has 3+ plausible hypotheses that need parallel verification
 - Involves multiple technology layers (CSS events, React state, API calls, etc.)
-- Previous subagent-level analysis failed to find the root cause
+- Previous sub-agent-level analysis failed to find the root cause
 
 ### Deep Mode Workflow
 
@@ -204,25 +219,23 @@ Hypothesis C: Fabric.js coordinate transform breaks after zoom change
 
 #### Step 2: Create Team
 
-Use `team_create` to create the debug team:
+Use your platform's team/group creation tool to form a debug team named `debug-{feature-name}`.
+
+Then dispatch members (one per hypothesis), ALL in the same tool call batch:
 
 ```
-team_create("debug-{feature-name}")
+Dispatch agent: name="分析员-A", prompt="验证假设：overlay container pointer-events..."
+Dispatch agent: name="分析员-B", prompt="验证假设：conditional unmount..."
+Dispatch agent: name="分析员-C", prompt="验证假设：Fabric.js coordinate..."
 ```
 
-Then launch members with `Task` tool (one per hypothesis), ALL in the same tool call batch:
-
-```
-Task(name="分析员-A", prompt="验证假设：overlay container pointer-events...")
-Task(name="分析员-B", prompt="验证假设：conditional unmount...")
-Task(name="分析员-C", prompt="验证假设：Fabric.js coordinate...")
-```
-
-**Critical:** Each member gets `max_turns` limited to 20-30 turns. Based on real testing, medium-complexity modules need ~14 turns; this leaves ample headroom for larger modules. If a member hits the limit without converging, mark that hypothesis as "未收敛" rather than retrying indefinitely.
+**Critical:** Each member gets a turn limit (recommended 20-30 turns). Based on real testing,
+medium-complexity modules need ~14 turns; this leaves ample headroom for larger modules.
+If a member hits the limit without converging, mark that hypothesis as "未收敛".
 
 #### Step 3: Debate & Converge
 
-Members communicate via `send_message` to:
+Members communicate via your platform's inter-agent messaging to:
 - Share findings with the lead (you)
 - Challenge each other's conclusions
 - Provide evidence that confirms or refutes hypotheses
@@ -236,7 +249,7 @@ When all members finish:
 2. If multiple hypotheses confirmed → the bug has multiple contributing factors
 3. Propose a fix that addresses ALL confirmed factors
 4. Present the coupling impact matrix (same as Standard Mode Step 3)
-5. `team_delete` to clean up
+5. Clean up the team when done
 
 ### Team Composition Guidelines
 
@@ -252,7 +265,8 @@ Lead (you) does NOT write code during analysis — only coordinates and approves
 - Bug is in a single file/component → Use Standard Mode
 - Only one hypothesis makes sense → Use Standard Mode
 - Bug is already well-understood → Just fix it directly
-- Token budget is constrained → Use Standard Mode (subagents are cheaper)
+- Token budget is constrained → Use Standard Mode (sub-agents are cheaper)
+- Platform lacks team/group support → Use Standard Mode only
 
 ### Deep Mode Red Flags
 
@@ -268,12 +282,11 @@ Lead (you) does NOT write code during analysis — only coordinates and approves
 
 | Scenario | Detection | Action |
 |----------|-----------|--------|
-| Subagent (code-explorer) fails/errors | Task tool returns error or empty | Mark module as "unanalyzed", proceed with remaining subagents, note gap in impact matrix |
-| Coupled modules > 8 | Main agent observes count during Step 2 | Ask user: "发现 N 个耦合模块，要全部分析还是优先关键模块？" |
-| `team_create` fails | Tool returns error | Fall back to Standard Mode, inform user "Deep mode unavailable, using Standard instead" |
-| Deep team member hits `max_turns` (30) | System auto-stops the agent | Mark hypothesis as "未收敛 — 分析范围过大，建议缩小" |
-| Deep team member idle (3+ turns with no tool calls or output) | Main agent observes during monitoring | Shutdown that member, mark hypothesis as "卡死" |
+| Sub-agent fails/errors | Agent dispatch returns error or empty | Mark module as "unanalyzed", proceed with remaining agents, note gap in impact matrix |
+| Coupled modules > 8 | Observed during Step 2 | Ask user: "发现 N 个耦合模块，要全部分析还是优先关键模块？" |
+| Team creation fails | Tool returns error | Fall back to Standard Mode, inform user |
+| Deep team member hits turn limit (~30) | System auto-stops the agent | Mark hypothesis as "未收敛 — 分析范围过大，建议缩小" |
+| Deep team member idle (3+ turns with no tool calls or output) | Observed during monitoring | Shut down that member, mark hypothesis as "卡死" |
 | All hypotheses refuted | Debate produces no confirmed root cause | Re-decompose hypotheses from a different angle, or fall back to Standard Mode |
-| `references/coupling-patterns.md` missing | File not found | Continue with built-in checklist (already inline in SKILL.md Common Mistakes section) |
-| Single agent in Standard Mode produces ambiguous result | Report lacks clear yes/no on coupling | Mark "⚠️ needs manual review" in impact matrix, highlight to user |
-
+| `references/coupling-patterns.md` missing | File not found | Continue with built-in checklist (already inline in Common Mistakes section) |
+| Single agent produces ambiguous result | Report lacks clear yes/no on coupling | Mark "⚠️ needs manual review" in impact matrix, highlight to user |
