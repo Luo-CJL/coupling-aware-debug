@@ -1,87 +1,68 @@
 # coupling-aware-debug
 
-Platform-agnostic debug skill with coupling impact analysis. Before proposing any fix, use parallel sub-agents to inspect all modules that share infrastructure with the broken feature, then verify the fix won't break coupled modes.
+[![CodeBuddy Skill](https://img.shields.io/badge/CodeBuddy-Skill-blue)](https://www.codebuddy.ai)
 
-## Platform Compatibility
+Debug skill with coupling impact analysis. Before proposing any fix, use parallel subagents to inspect all modules that share infrastructure with the broken feature, then verify the fix won't break coupled modes.
 
-This is the **platform-agnostic** edition — works with any AI coding platform that supports agent dispatch.
+Darwin 评分: **88.3/100**
 
-| Platform | Standard Mode | Deep Mode |
-|----------|:---:|:---:|
-| CodeBuddy | ✅ | ✅ |
-| Claude Code | ✅ | ⚠️ No team support |
-| Cursor | ✅ | ⚠️ No team support |
-| Other | ✅ (if has agent dispatch) | Platform-dependent |
+---
 
-## Two Modes
+## 安装
 
-| Trigger | Mode | Method |
-|---------|------|--------|
-| `debug` / `修bug` | **Standard** | Parallel sub-agents analyze coupling |
-| `深度debug` / `复杂bug` | **Deep** | Agent team competitive hypothesis debugging |
-
-## Install
-
-Skill files alone don't auto-trigger — you also need a platform-level rule.
-
-### 1. Install Skill
+### 1. 克隆 Skill
 
 ```bash
-# Depends on your platform. Example for CodeBuddy:
 cd ~/.codebuddy/skills
 git clone https://github.com/Luo-CJL/coupling-aware-debug.git
 ```
 
-### 2. Configure Auto-Trigger Rule
+### 2. 添加用户规则（自动触发）
 
-The skill needs a companion rule that tells your AI platform "load this skill when user says debug".
-
-**CodeBuddy** — create `~/.codebuddy/rules/debug-coupling.md`:
+在 `~/.codebuddy/rules/` 下创建文件，内容：
 
 ```markdown
 ---
 description: Debug 时自动加载耦合感知调试 skill
 alwaysApply: true
+enabled: true
 ---
 
-当用户提到 debug/修bug/有问题/报错/无法 时，加载 coupling-aware-debug skill。
-先说"深度debug/复杂bug"时，走 Deep Mode (Agent Team)。
+# 耦合感知调试规则
+
+当用户提到以下关键词时，必须加载 `coupling-aware-debug` skill：
+
+- **标准模式**：`debug`、`修bug`、`有问题`、`报错`、`无法`
+- **深度模式**：`深度debug`、`复杂bug`、`跨模块debug`、`团队debug`
+
+执行要求：先并行分析耦合影响面，再提出修复方案，等用户批准后执行。
 ```
 
-**Claude Code** — add to `CLAUDE.md`:
+> ⚠️ skill + 规则缺一不可：规则负责触发，skill 负责执行。
 
-```markdown
-## Debug Protocol
-When user reports a bug, load skill: coupling-aware-debug (check ~/.claude/skills/)
-```
+## 双模式
 
-**Cursor** — add to `.cursorrules`:
+| 触发词 | 模式 | 做法 |
+|--------|------|------|
+| `debug` / `修bug` | **Standard** | Subagent 并行耦合分析 |
+| `深度debug` / `复杂bug` | **Deep** | Agent Team 竞争性假设调试 |
 
-```
-When user says "debug" or reports a bug, reference coupling-aware-debug workflow:
-1. Identify shared infrastructure
-2. Launch parallel sub-agents to check coupling
-3. Present impact matrix before proposing fix
-```
-
-> ⚠️ Skill + trigger rule are a pair. One without the other won't work.
-
-## Structure
+## 目录结构
 
 ```
 coupling-aware-debug/
-├── SKILL.md                          # Main workflow (platform-agnostic)
+├── SKILL.md                          # 主工作流定义 (280行)
 ├── references/
-│   └── coupling-patterns.md          # 5 coupling patterns + checklist
+│   └── coupling-patterns.md          # 5种耦合模式 + 检查清单
 └── README.md
 ```
 
-## Design
+## 设计理念
 
-- **TDD verified** — RED/GREEN baseline testing confirms behavior change
-- **Tunnel vision protection** — forces inspection of ALL coupled modules before proposing fixes
-- **Rationalization table** — counters extracted from real baseline test failures
-- **Exception handling** — 8 fallback scenarios with detection + action
+- **TDD verified** — 通过 RED/GREEN 基线测试验证
+- **Tunnel vision protection** — 强制检查所有耦合模块
+- **Dual mode** — 日常 bug 用 subagent，复杂 bug 用 Agent Team
+- **Rationalization table** — 从真实基线测试提取的防绕行表
 
 ## License
 
