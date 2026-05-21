@@ -9,7 +9,7 @@ description: >-
   says "debug", "修bug", "有问题", "报错", "不正常", "修复", or describes unexpected behavior
   in a feature that coexists with other modes. Use when a fix might create regression.
   Use "深度debug" / "复杂bug" / "跨模块debug" / "团队debug" to trigger deep mode (Agent Team).
-version: 1.4.1
+version: 1.4.2
 ---
 
 # Coupling-Aware Debug (耦合感知调试)
@@ -110,6 +110,9 @@ Aggregate subagent reports into a coupling matrix before proposing any fix:
 - Fix the reported bug
 - Cause zero regression in all other modes
 - If impossible with a local change, report the architectural constraint to the user.
+
+**⛔ STOP: Do not proceed to Step 4 until the user approves the coupling impact matrix.**
+**First align on "what's broken", then discuss "how to fix".**
 
 ### Step 4: Propose & Execute
 
