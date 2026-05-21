@@ -53,7 +53,7 @@ enabled: true
 
 ```
 coupling-aware-debug/
-├── SKILL.md                          # 主工作流定义 (342行, v1.4)
+├── SKILL.md                          # 主工作流定义 (346行, v1.4.2)
 ├── references/
 │   └── coupling-patterns.md          # 10种耦合模式 + 检查清单
 └── README.md
