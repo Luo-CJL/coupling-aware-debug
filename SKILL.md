@@ -2,12 +2,14 @@
 name: coupling-aware-debug
 category: debugging
 description: >-
-  Use when debugging bugs in multi-mode features where several modes share infrastructure
-  (containers, state, event routing). Use when the user reports a bug, says "debug", "修bug",
-  "有问题", "报错", "不正常", "修复", or describes unexpected behavior in a feature that coexists
-  with other modes in the same UI. Use when a fix might create regression in coupled modes.
+  Use when debugging bugs where a fix might break something else. Covers 6 coupling
+  dimensions: spatial (containers/z-index), state (shared stores/Context), timing (async
+  races/useEffect order), event chain (stopPropagation/preventDefault), side-effect cascade
+  (useEffect chains), state boundary (loading/empty/error). Use when the user reports a bug,
+  says "debug", "修bug", "有问题", "报错", "不正常", "修复", or describes unexpected behavior
+  in a feature that coexists with other modes. Use when a fix might create regression.
   Use "深度debug" / "复杂bug" / "跨模块debug" / "团队debug" to trigger deep mode (Agent Team).
-version: 1.4
+version: 1.4.1
 ---
 
 # Coupling-Aware Debug (耦合感知调试)
