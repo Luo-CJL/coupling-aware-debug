@@ -2,7 +2,9 @@
 
 [![CodeBuddy Skill](https://img.shields.io/badge/CodeBuddy-Skill-blue)](https://www.codebuddy.ai)
 
-Debug skill with coupling impact analysis. Before proposing any fix, use parallel subagents to inspect all modules that share infrastructure with the broken feature, then verify the fix won't break coupled modes.
+Debug skill with **6-dimension coupling impact analysis**. Before proposing any fix, use parallel subagents to inspect all modules that share infrastructure, state, events, timing, side-effects, and edge states with the broken feature — then verify the fix won't break anything.
+
+**v1.4** — Spatial · State · Timing · Event Chain · Side-Effect Chain · State Boundary
 
 Darwin 评分: **88.3/100**
 
@@ -51,16 +53,17 @@ enabled: true
 
 ```
 coupling-aware-debug/
-├── SKILL.md                          # 主工作流定义 (280行)
+├── SKILL.md                          # 主工作流定义 (342行, v1.4)
 ├── references/
-│   └── coupling-patterns.md          # 5种耦合模式 + 检查清单
+│   └── coupling-patterns.md          # 10种耦合模式 + 检查清单
 └── README.md
 ```
 
 ## 设计理念
 
 - **TDD verified** — 通过 RED/GREEN 基线测试验证
-- **Tunnel vision protection** — 强制检查所有耦合模块
+- **6 coupling dimensions** — 空间·状态·时序·事件链·副作用链·状态边界
+- **Tunnel vision protection** — 强制检查所有耦合维度
 - **Dual mode** — 日常 bug 用 subagent，复杂 bug 用 Agent Team
 - **Rationalization table** — 从真实基线测试提取的防绕行表
 

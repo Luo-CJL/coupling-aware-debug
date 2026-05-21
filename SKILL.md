@@ -7,7 +7,7 @@ description: >-
   "有问题", "报错", "不正常", "修复", or describes unexpected behavior in a feature that coexists
   with other modes in the same UI. Use when a fix might create regression in coupled modes.
   Use "深度debug" / "复杂bug" / "跨模块debug" / "团队debug" to trigger deep mode (Agent Team).
-version: 1.3
+version: 1.4
 ---
 
 # Coupling-Aware Debug (耦合感知调试)
@@ -45,6 +45,9 @@ multiple modes/features that share containers, state, or event routing.
 
 - Reproduce the user's description to confirm understanding.
 - Identify the exact file(s) and line(s) where the symptom manifests.
+- **Pre-check — eliminate two common blind spots:**
+  - [ ] **Error swallowing?** Check `try-catch` / `.catch(() => null)` / conditional render returning `null` — a silent error may be hiding the real root cause.
+  - [ ] **Environment-specific?** Try another browser / resize the viewport / switch locale / clear cache — does the bug disappear in a different environment?
 - Then **immediately ask the coupling question** before going deeper:
 
 > **"What other features/modes share the infrastructure that this feature depends on?"**
@@ -55,34 +58,51 @@ event routing (`pointer-events`), z-index stacking, conditional rendering gate.
 ### Step 2: Coupling Analysis (Parallel) — MANDATORY, DO NOT SKIP
 
 **Launch parallel subagents** (Task tool, `subagent_name="code-explorer"`) to inspect
-EVERY module that shares the broken feature's infrastructure. One per module, all launched
-simultaneously. Wait for ALL to complete before forming a conclusion.
+EVERY coupling surface. This means not just spatial coupling (containers), but ALL six
+coupling dimensions below. Launch one subagent per dimension, all simultaneously.
+Wait for ALL to complete before forming a conclusion.
 
 **This step is NOT optional.** Proposing a fix without completing Step 2 is a violation.
 
-Each subagent must answer:
-1. Does this module render in the shared container?
-2. What `pointer-events` / z-index / event handlers does it set?
-3. In its passive state (e.g., `readOnly=true`, hidden, inactive), does it block events?
-4. Would the proposed fix interfere with this module's normal behavior?
+#### Six Coupling Dimensions (Analyze ALL in parallel)
 
-Example for a PDF editor with 8 modes:
+| # | Dimension | Key Question | Check For |
+|---|-----------|-------------|-----------|
+| 1 | 🏗️ **Spatial** (original) | Who else renders in this container? | Shared `div`, canvas, overlay; `pointer-events`, `z-index`, conditional mounting |
+| 2 | 🔗 **State** | Who else reads/writes this state? | Global store, Context, localStorage, URL params, props drilling chain |
+| 3 | ⏱️ **Timing** | Who depends on the execution order? | `useEffect` ordering, async callbacks, promise chains, `setTimeout` races |
+| 4 | 📡 **Event Chain** | Whose events flow through this node? | `stopPropagation`, `preventDefault`, event bubbling, capture phase listeners |
+| 5 | 🔄 **Side-Effect Chain** | What `useEffect`/watcher does this trigger? | State → effect → more state → more effects cascades |
+| 6 | 🔲 **State Boundary** | Does this fix hold in all edge states? | Loading / empty / error / boundary-value / null / undefined |
+
+**Each subagent must answer:**
+
+1. **Spatial:** Does this module share a container? What `pointer-events`/z-index/handlers does it set? In its passive state, does it block events?
+2. **State:** List all consumers of the modified state. If the state structure changes, does each consumer handle the new shape?
+3. **Timing:** Does any code assume a specific async completion order? Check `Promise.all`, `await` chains, `useEffect` dependency arrays.
+4. **Event Chain:** Trace event propagation through the modified node. List every downstream/upstream listener. Would `stopPropagation`/`preventDefault` break any of them?
+5. **Side-Effect Chain:** Starting from this state change, trace forward through all `useEffect`/`useMemo`/`watch`/`computed` to map the full cascade.
+6. **State Boundary:** Test the fix under all edge states. If the normal state works but loading crashes at `data.map()`, the fix is incomplete.
+
+**Example parallel analysis:**
 
 ```
 Parallel subagents (launched simultaneously):
-├── subagent A → WatermarkLayer (passive mode behavior)
-├── subagent B → SignatureLayer (passive mode behavior)
-├── subagent C → RedactionLayer (passive mode behavior)
-└── subagent D → ImageLayer (passive mode behavior)
+├── subagent A → Spatial: WatermarkLayer, SignatureLayer, RedactionLayer
+├── subagent B → State: Redux store consumers, Context providers
+├── subagent C → Timing: useEffect order, async data fetching sequence
+├── subagent D → Event Chain: bubbling path from click target to document root
+├── subagent E → Side-Effect Chain: setState → useEffect → downstream effects
+└── subagent F → State Boundary: loading / empty / error states of affected components
 ```
 
 ### Step 3: Impact Assessment
 
 Aggregate subagent reports into a coupling matrix before proposing any fix:
 
-| Mode | Shares What | Affected? | Mitigation |
-|------|-------------|:---:|------------|
-| mode-A | shared container | ✅/❌ | how to protect |
+| Mode / Component | Spatial (Container/Events) | State (Who consumes?) | Timing (Order dependent?) | Event Chain (Propagation?) | Side-Effect Chain (Cascade?) | State Boundary (Edge cases?) | Mitigation |
+|------|:---:|:---:|:---:|:---:|:---:|:---:|------------|
+| component-A | ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ | how to protect |
 
 **If the fix would break ANY other mode, redesign it.** The fix must:
 - Fix the reported bug
@@ -144,6 +164,42 @@ still intercepts events regardless of its children.
 **Counter:** Always trace the DOM tree from the event target up to the first
 ancestor with `pointer-events: auto`. That ancestor is the true blocker.
 
+### Mistake 5: Only Testing the Happy Path
+
+**What it looks like:** Agent fixes a bug in the normal/happy-path state (e.g., list rendering)
+and assumes loading, empty, and error states are fine. Empty list crashes on `.map()`,
+loading skeleton breaks because a prop changed, error boundary swallows the new code path.
+
+**Why it happens:** The bug report only describes the happy-path symptom, so the agent only
+thinks about the happy-path fix.
+
+**How this skill prevents it:** Step 2 state-boundary analysis forces inspection of all
+edge states: normal / loading / empty / error / boundary-value.
+
+### Mistake 6: Event Chain Breakage
+
+**What it looks like:** Adding `stopPropagation()` or `preventDefault()` to fix one
+component's event handling, but this silently breaks 3 other components that relied on
+that event bubbling up or default behavior.
+
+**Why it happens:** The agent sees the immediate chain (caller → this handler) but doesn't
+trace the full event propagation path (ancestors, siblings, nested children).
+
+**How this skill prevents it:** Step 2 event-chain analysis maps the full propagation path
+and identifies every listener that depends on event flow through the modified node.
+
+### Mistake 7: Side-Effect Cascade
+
+**What it looks like:** Changing one piece of state triggers a `useEffect`, which sets
+another state, which triggers another `useEffect`... The page re-renders 10+ times
+and behavior becomes unpredictable.
+
+**Why it happens:** The agent doesn't trace the dependency chain of reactive effects.
+One `setState` can cascade through multiple hooks, watchers, and derived values.
+
+**How this skill prevents it:** Step 2 side-effect chain analysis traces each state change
+forward through all `useEffect`/`useMemo`/`watch` dependencies to find cascading triggers.
+
 ## Red Flags — STOP and Re-evaluate
 
 - "This is just a simple CSS/z-index fix"
@@ -151,6 +207,9 @@ ancestor with `pointer-events: auto`. That ancestor is the true blocker.
 - "I don't need to check other modes for this"
 - "The fix is too small to affect anything else"
 - "I already traced the problem to this line"
+- "This state is mine — no other component uses it"
+- "Empty state is fine, I don't need to test it"
+- "It's just event handling, won't affect anything else"
 
 **ALL of these mean: You are about to propose a fix without coupling analysis.
 Stop. Run Step 2. Then propose.**
@@ -164,6 +223,9 @@ Stop. Run Step 2. Then propose.**
 | "I checked all the relevant files" | Reading files ≠ checking coupling. Did you ask "what else shares this?" |
 | "It's a visual bug, not a logic bug" | Visual bugs in shared containers affect ALL modes that render there. |
 | "The fix works for the reported mode" | Working for ONE mode is not enough. Must work for ALL modes. |
+| "This state is only used by A" | Did you search the entire codebase? Global store might have 10 unknown consumers. |
+| "I just added a stopPropagation" | The event bubble chain may have 5 downstream listeners that now get nothing. |
+| "Empty state won't have problems" | Empty lists crash `.map()`, empty objects fail destructuring, boundary values break math. |
 
 ## Key Principles
 
