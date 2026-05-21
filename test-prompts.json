@@ -1,0 +1,5 @@
+[
+  {"id": 1, "prompt": "debug: 表格组件排序后数据不刷新了", "expected": "走Step1预检→Step2六维度并行→Step3矩阵→Step4方案"},
+  {"id": 2, "prompt": "修bug: 弹窗加了点击外部关闭，但弹窗里的下拉菜单打不开了", "expected": "必须覆盖事件链耦合（stopPropagation）和状态耦合"},
+  {"id": 3, "prompt": "深度debug: 首页加载慢，图表和通知有时不显示", "expected": "触发Deep Mode，拆解时序/副作用假设并行验证"}
+]

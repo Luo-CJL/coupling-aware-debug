@@ -4,9 +4,9 @@
 
 Debug skill with **6-dimension coupling impact analysis**. Before proposing any fix, use parallel subagents to inspect all modules that share infrastructure, state, events, timing, side-effects, and edge states with the broken feature — then verify the fix won't break anything.
 
-**v1.4** — Spatial · State · Timing · Event Chain · Side-Effect Chain · State Boundary
+**v1.4.2** — Spatial · State · Timing · Event Chain · Side-Effect Chain · State Boundary
 
-Darwin 评分: **88.3/100**
+Darwin 评分: **89.5/100**（full_test verified）
 
 ---
 
