@@ -56,6 +56,7 @@ coupling-aware-debug/
 ├── SKILL.md                          # 主工作流定义 (346行, v1.4.2)
 ├── references/
 │   └── coupling-patterns.md          # 10种耦合模式 + 检查清单
+├── test-prompts.json                 # 测试提示词
 └── README.md
 ```
 
