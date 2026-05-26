@@ -19,25 +19,12 @@ cd ~/.codebuddy/skills
 git clone https://github.com/Luo-CJL/coupling-aware-debug.git
 ```
 
-### 2. 添加用户规则（自动触发）
+### 2. 安装触发规则
 
-在 `~/.codebuddy/rules/` 下创建文件，内容：
+将仓库中的规则文件拷到用户规则目录：
 
-```markdown
----
-description: Debug 时自动加载耦合感知调试 skill
-alwaysApply: true
-enabled: true
----
-
-# 耦合感知调试规则
-
-当用户提到以下关键词时，必须加载 `coupling-aware-debug` skill：
-
-- **标准模式**：`debug`、`修bug`、`有问题`、`报错`、`无法`
-- **深度模式**：`深度debug`、`复杂bug`、`跨模块debug`、`团队debug`
-
-执行要求：先并行分析耦合影响面，再提出修复方案，等用户批准后执行。
+```bash
+cp rules/05-debug-coupling.md ~/.codebuddy/rules/
 ```
 
 > ⚠️ skill + 规则缺一不可：规则负责触发，skill 负责执行。
